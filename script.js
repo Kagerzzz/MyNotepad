@@ -26,6 +26,24 @@ const themeIcon = document.getElementById('theme-icon');
 const sidebar = document.getElementById('main-sidebar');
 const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
 
+// --- HÀM GỌI API ĐÃ ĐƯỢC CẬP NHẬT CHO APPS SCRIPT ---
+async function fetchNoCache(url, options = {}) {
+    const separator = url.includes('?') ? '&' : '?';
+    const uniqueUrl = `${url}${separator}_t=${Date.now()}`;
+    
+    // Đảm bảo không bị lỗi CORS khi gọi Google Apps Script
+    if (options.method === 'POST') {
+        if (!options.headers) options.headers = {};
+        // Sử dụng text/plain để vượt qua preflight CORS của trình duyệt
+        options.headers['Content-Type'] = 'text/plain;charset=utf-8';
+    }
+    
+    return fetch(uniqueUrl, options);
+}
+// Mobile Elements
+const sidebar = document.getElementById('main-sidebar');
+const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
+
 // --- HÀM GỌI API CHỐNG CACHE ---
 async function fetchNoCache(url, options = {}) {
     const separator = url.includes('?') ? '&' : '?';
