@@ -379,9 +379,9 @@ function formatDoc(cmd, val = null) {
 }
 
 const handleInput = () => {
+    // Chỉ ẩn biểu tượng "đã lưu" (dấu tích xanh) khi người dùng bắt đầu gõ
+    // Không còn kích hoạt autoSaveTimer nữa
     saveStatus.classList.add('hidden');
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(saveNote, 3000);
 };
 editor.addEventListener('input', handleInput);
 titleInput.addEventListener('input', handleInput);
@@ -406,6 +406,18 @@ function saveNoteManual() {
     icon.className = "fa-solid fa-check"; icon.style.color = "#34d399";
     setTimeout(() => { icon.className = "fa-solid fa-floppy-disk"; icon.style.color = ""; }, 1500);
 }
+// --- BẮT SỰ KIỆN LƯU BẰNG CTRL+S / CMD+S ---
+document.addEventListener('keydown', function(e) {
+    // Kiểm tra nếu phím Ctrl (Windows) hoặc Cmd (Mac) đang được giữ và phím 's' được nhấn
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault(); // Chặn hành vi mặc định (lưu trang web HTML của trình duyệt)
+        
+        // Chỉ thực hiện lưu nếu đang mở một ghi chú (có currentNoteId)
+        if (currentNoteId) {
+            saveNoteManual(); 
+        }
+    }
+});
 function updateTimeUI(ts) {
     const d = new Date(ts * 1000);
     document.getElementById('last-saved').innerText = 
