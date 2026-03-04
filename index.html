@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- CHỐNG CACHE TRÌNH DUYỆT -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <title>Kagerz Notepad</title>
+    <link rel="shortcut icon" href="https://lh3.googleusercontent.com/d/1MNgiCDv8R3Orm7WV-OisZuzbWiXMN0be">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- CSS Loading -->
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- GLOBAL LOGIN SCREEN -->
+    <div id="login-screen" class="glass">
+        <div class="simple-label">Nhập mật khẩu</div>
+        <input type="password" id="pin-input" maxlength="4" class="pin-input" placeholder="••••" autofocus autocomplete="off" inputmode="numeric">
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app">
+        <!-- HEADER -->
+        <header class="glass bento-card">
+            <div class="flex items-center" style="flex: 1; overflow: hidden;">
+                <button id="mobile-menu-btn" onclick="toggleMobileSidebar()">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <input type="text" id="note-title" placeholder="Tên ghi chú">
+                <span id="save-status" class="hidden"><i class="fa-solid fa-check"></i></span>
+            </div>
+
+            <!-- Toolbar bên phải -->
+            <div class="toolbar-right" id="main-toolbar">
+                <div id="lock-indicator" class="hidden" style="color: #f59e0b; margin-right: 5px;" title="Ghi chú bị khóa">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+
+                <!-- Theme Switcher -->
+                <button class="btn-icon" onclick="toggleTheme()" title="Đổi giao diện Sáng/Tối">
+                    <i id="theme-icon" class="fa-solid fa-moon"></i>
+                </button>
+
+                <button class="btn-icon" onclick="window.location.reload()" title="Tải lại">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+
+                <button id="global-settings-btn" class="btn-icon" onclick="openGlobalSettingsModal()" title="Bảo mật">
+                    <i class="fa-solid fa-user-shield"></i>
+                </button>
+
+                <div class="divider"></div>
+
+                <button class="btn-icon note-action" onclick="copyLink()" title="Copy Link"><i id="copy-icon" class="fa-solid fa-link"></i></button>
+                <button class="btn-icon note-action" onclick="saveNoteManual()" title="Lưu"><i id="save-icon" class="fa-solid fa-floppy-disk"></i></button>
+                <button class="btn-icon note-action" onclick="openSettings()" title="Cài đặt"><i class="fa-solid fa-gear"></i></button>
+                <button class="btn-icon delete note-action" onclick="deleteNote()" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+
+                <div class="divider"></div>
+                <div id="last-saved">00:00</div>
+            </div>
+        </header>
+
+        <!-- CONTENT -->
+        <div class="content-area">
+            <div id="mobile-sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+
+            <aside class="glass bento-card" id="main-sidebar">
+                <div class="sidebar-header">
+                    <span>Danh sách</span>
+                    <button class="btn-add" onclick="addNewNote()"><i class="fa-solid fa-plus"></i> Mới</button>
+                </div>
+                <div id="note-list"></div>
+            </aside>
+
+            <main class="glass bento-card">
+                <div class="editor-toolbar" id="format-toolbar">
+                    <!-- Text Formatting -->
+                    <button class="tool-btn" onclick="formatDoc('bold')" title="In đậm"><i class="fa-solid fa-bold"></i></button>
+                    <button class="tool-btn" onclick="formatDoc('italic')" title="In nghiêng"><i class="fa-solid fa-italic"></i></button>
+                    <button class="tool-btn" onclick="formatDoc('underline')" title="Gạch chân"><i class="fa-solid fa-underline"></i></button>
+                    <button class="tool-btn" onclick="formatDoc('strikeThrough')" title="Gạch ngang"><i class="fa-solid fa-strikethrough"></i></button>
+                    
+                    <div class="divider" style="height: 16px;"></div>
+                    
+                    <!-- Font Size (Số) -->
+                    <select onchange="formatDoc('fontSize', this.value)" class="font-select" title="Cỡ chữ">
+                        <option value="1">10</option>
+                        <option value="2">13</option>
+                        <option value="3" selected>16</option>
+                        <option value="4">18</option>
+                        <option value="5">24</option>
+                        <option value="6">32</option>
+                        <option value="7">48</option>
+                    </select>
+
+                    <!-- Text Color -->
+                    <div class="color-picker-wrapper" title="Màu chữ">
+                        <i class="fa-solid fa-font" style="font-size: 0.8rem; position: absolute; pointer-events: none; color: var(--text-muted);"></i>
+                        <input type="color" onchange="formatDoc('foreColor', this.value)" class="color-picker" style="opacity: 0;">
+                    </div>
+
+                    <!-- Highlight Color -->
+                    <div class="color-picker-wrapper" title="Màu đánh dấu">
+                        <i class="fa-solid fa-highlighter" style="font-size: 0.8rem; position: absolute; pointer-events: none; color: var(--text-muted);"></i>
+                        <input type="color" onchange="formatDoc('hiliteColor', this.value)" class="color-picker" style="opacity: 0;">
+                    </div>
+                </div>
+
+                <div id="editor-container">
+                    <div id="editor" contenteditable="true" spellcheck="false"></div>
+                    
+                    <div id="locked-overlay" class="hidden">
+                        <div class="simple-label">Nhập mật khẩu</div>
+                        <input type="password" id="note-pass-input" class="pin-input" placeholder="••••" autocomplete="off">
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="settings-modal" class="modal-container">
+        <div class="modal-content">
+            <div class="modal-header">Cài đặt ghi chú</div>
+            <div class="setting-row">
+                <span>Bảo vệ bằng mật khẩu</span>
+                <label class="switch">
+                    <input type="checkbox" id="setting-is-locked" onchange="togglePassGroup()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div id="pass-setting-group" style="margin-bottom: 1.5rem; opacity: 0.5; pointer-events: none; transition: opacity 0.3s;">
+                <label style="display:block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem;">Mật khẩu cho ghi chú này</label>
+                <input type="text" id="setting-password" class="input-std" style="width: 100%;" placeholder="Nhập mật khẩu">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-text" onclick="closeSettings()">Hủy</button>
+                <button class="btn-primary" onclick="saveSettings()">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="global-settings-modal" class="modal-container">
+        <div class="modal-content">
+            <div class="modal-header">Cài đặt bảo mật</div>
+            <div class="setting-row">
+                <span>Bảo vệ toàn trang</span>
+                <label class="switch">
+                    <input type="checkbox" id="global-auth-toggle" onchange="handleGlobalAuthToggleLocal()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="section-label">Đổi mật khẩu tổng</div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display:block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem;">Mật khẩu hiện tại</label>
+                <input type="password" id="current-global-pass" class="input-std" style="width: 100%;" maxlength="4">
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display:block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem;">Mật khẩu mới (4 số)</label>
+                <input type="password" id="new-global-pass" class="input-std" style="width: 100%;" maxlength="4">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-text" onclick="closeGlobalSettingsModal()">Đóng</button>
+                <button class="btn-primary" onclick="saveGlobalChanges()">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script cũng được thêm tham số version để ép tải mới -->
+    <script>
+        var script = document.createElement('script');
+        script.src = 'script.js?v=' + Date.now();
+        document.body.appendChild(script);
+    </script>
+</body>
+</html>
