@@ -400,24 +400,21 @@ async function saveNote() {
         renderNoteList();
     }
 }
-function saveNoteManual() {
-    clearTimeout(autoSaveTimer); saveNote();
-    const icon = document.getElementById('save-icon');
-    icon.className = "fa-solid fa-check"; icon.style.color = "#34d399";
-    setTimeout(() => { icon.className = "fa-solid fa-floppy-disk"; icon.style.color = ""; }, 1500);
-}
-// --- BẮT SỰ KIỆN LƯU BẰNG CTRL+S / CMD+S ---
-document.addEventListener('keydown', function(e) {
-    // Kiểm tra nếu phím Ctrl (Windows) hoặc Cmd (Mac) đang được giữ và phím 's' được nhấn
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault(); // Chặn hành vi mặc định (lưu trang web HTML của trình duyệt)
+// --- BẮT SỰ KIỆN LƯU BẰNG CTRL+S / CMD+S (PHIÊN BẢN MẠNH NHẤT) ---
+window.addEventListener('keydown', function(e) {
+    // Nhận diện phím Ctrl/Cmd kết hợp với phím S (cả chữ hoa, chữ thường hoặc mã phím)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
         
-        // Chỉ thực hiện lưu nếu đang mở một ghi chú (có currentNoteId)
+        // Chặn ngay lập tức hộp thoại Save As của trình duyệt
+        e.preventDefault(); 
+        e.stopPropagation(); // Ngăn sự kiện lan truyền thêm
+        
+        // Thực hiện lưu nếu đang mở ghi chú
         if (currentNoteId) {
             saveNoteManual(); 
         }
     }
-});
+}, { capture: true }); // Bắt sự kiện sớm nhất có thể
 function updateTimeUI(ts) {
     const d = new Date(ts * 1000);
     document.getElementById('last-saved').innerText = 
