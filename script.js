@@ -158,18 +158,28 @@ function toggleMobileSidebar() {
 // --- GLOBAL LOGIN ---
 pinInput.addEventListener('input', async (e) => {
     if (e.target.value.length === 4) {
+        // Bắt đầu loading
+        pinInput.disabled = true;
+        pinInput.style.opacity = '0.5';
+        
         try {
             const res = await fetchNoCache(API_URL + '?action=login_global', {
                 method: 'POST', body: JSON.stringify({ password: e.target.value })
             });
             const data = await res.json();
-            if (data.status === 'success') hideLogin();
-            else {
+            if (data.status === 'success') {
+                hideLogin();
+            } else {
                 pinInput.value = '';
                 pinInput.style.borderBottomColor = '#ef4444';
                 setTimeout(() => pinInput.style.borderBottomColor = 'var(--text-muted)', 500);
             }
         } catch (err) { alert("Lỗi kết nối API!"); }
+        
+        // Kết thúc loading
+        pinInput.disabled = false;
+        pinInput.style.opacity = '1';
+        pinInput.focus();
     }
 });
 
@@ -241,9 +251,25 @@ async function initApp() {
 }
 
 async function loadNoteList() {
-    const res = await fetchNoCache(API_URL + '?action=get_list');
-    const data = await res.json();
-    if (data.status === 'success') { notes = data.data; renderNoteList(); }
+    // 1. Load ngay lập tức từ LocalStorage (nếu có) để giao diện hiện lên luôn
+    const cachedNotes = localStorage.getItem('kagerz_notes_cache');
+    if (cachedNotes) {
+        notes = JSON.parse(cachedNotes);
+        renderNoteList();
+    }
+
+    // 2. Chạy ngầm gọi API để lấy dữ liệu mới nhất
+    try {
+        const res = await fetchNoCache(API_URL + '?action=get_list');
+        const data = await res.json();
+        if (data.status === 'success') { 
+            notes = data.data; 
+            localStorage.setItem('kagerz_notes_cache', JSON.stringify(notes)); // Cập nhật cache
+            renderNoteList(); 
+        }
+    } catch (error) {
+        console.warn("Chưa đồng bộ được danh sách mới nhất", error);
+    }
 }
 
 function renderNoteList() {
@@ -388,15 +414,40 @@ function updateTimeUI(ts) {
 
 // CRUD
 async function addNewNote() {
-    const res = await fetchNoCache(API_URL + '?action=add_note', { method: 'POST', body: JSON.stringify({}) });
-    const data = await res.json();
-    if(data.status === 'success') { 
-        notes.unshift(data.data); 
-        loadNote(data.data.id); 
-        if(window.innerWidth <= 768) {
-            sidebar.classList.remove('mobile-open');
-            mobileOverlay.classList.remove('show');
+    // 1. Tạo ID tạm thời và hiển thị ngay lập tức (Tốc độ 0s)
+    const tempId = 'temp_' + Date.now();
+    const timestamp = Math.floor(Date.now() / 1000);
+    const newNote = {
+        id: tempId, title: 'Đang tạo...', content: '', 
+        is_locked: false, password: '', updated_at: timestamp
+    };
+    
+    notes.unshift(newNote);
+    loadNote(tempId);
+    if(window.innerWidth <= 768) {
+        sidebar.classList.remove('mobile-open');
+        mobileOverlay.classList.remove('show');
+    }
+
+    // 2. Gọi API ngầm để tạo thật trên Server
+    try {
+        const res = await fetchNoCache(API_URL + '?action=add_note', { method: 'POST', body: JSON.stringify({}) });
+        const data = await res.json();
+        if(data.status === 'success') { 
+            // 3. Thay thế ID tạm bằng ID thật từ server
+            const index = notes.findIndex(n => n.id === tempId);
+            if (index !== -1) {
+                notes[index] = data.data;
+                currentNoteId = data.data.id;
+                renderNoteList(); // Render lại danh sách để lấy ID thật
+                titleInput.value = data.data.title;
+            }
         }
+    } catch (err) {
+        // Xử lý lỗi nếu việc gọi API thất bại
+        notes = notes.filter(n => n.id !== tempId);
+        renderNoteList();
+        alert("Có lỗi khi tạo ghi chú mới. Vui lòng thử lại!");
     }
 }
 async function deleteNote() {
