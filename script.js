@@ -400,21 +400,6 @@ async function saveNote() {
         renderNoteList();
     }
 }
-// --- BẮT SỰ KIỆN LƯU BẰNG CTRL+S / CMD+S (PHIÊN BẢN MẠNH NHẤT) ---
-window.addEventListener('keydown', function(e) {
-    // Nhận diện phím Ctrl/Cmd kết hợp với phím S (cả chữ hoa, chữ thường hoặc mã phím)
-    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
-        
-        // Chặn ngay lập tức hộp thoại Save As của trình duyệt
-        e.preventDefault(); 
-        e.stopPropagation(); // Ngăn sự kiện lan truyền thêm
-        
-        // Thực hiện lưu nếu đang mở ghi chú
-        if (currentNoteId) {
-            saveNoteManual(); 
-        }
-    }
-}, { capture: true }); // Bắt sự kiện sớm nhất có thể
 function updateTimeUI(ts) {
     const d = new Date(ts * 1000);
     document.getElementById('last-saved').innerText = 
