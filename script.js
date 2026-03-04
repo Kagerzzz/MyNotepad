@@ -342,16 +342,41 @@ function setToolbarLocked(locked) {
 }
 
 async function fetchNoteContent(id, password = '', silent = false) {
+    const noteBasic = notes.find(n => n.id === id);
+    
+    // 1. Load nội dung ngay lập tức từ LocalStorage (nếu ghi chú không bị khóa)
+    if (noteBasic && !noteBasic.is_locked && !password) {
+        const cachedContents = JSON.parse(localStorage.getItem('kagerz_note_contents') || '{}');
+        if (cachedContents[id]) {
+            lockedOverlay.classList.add('hidden');
+            editor.innerHTML = cachedContents[id];
+            setToolbarLocked(false);
+            setTimeout(updateToolbarState, 100);
+        }
+    }
+
+    // 2. Chạy ngầm gọi API để lấy dữ liệu mới nhất (đảm bảo đồng bộ giữa điện thoại và máy tính)
     const res = await fetchNoCache(API_URL + '?action=get_note', {
         method: 'POST', body: JSON.stringify({ id: id, password: password })
     });
     const data = await res.json();
+    
     if (data.status === 'success') {
         lockedOverlay.classList.add('hidden');
-        editor.innerHTML = data.data.content;
+        // Chỉ đè lại nội dung nếu có sự khác biệt hoặc load lần đầu
+        if (editor.innerHTML !== data.data.content) {
+            editor.innerHTML = data.data.content;
+        }
         updateTimeUI(data.data.updated_at);
         setToolbarLocked(false);
         setTimeout(updateToolbarState, 100);
+        
+        // 3. Cập nhật nội dung mới nhất vào LocalStorage
+        if (!data.data.is_locked) { 
+            const cachedContents = JSON.parse(localStorage.getItem('kagerz_note_contents') || '{}');
+            cachedContents[id] = data.data.content;
+            localStorage.setItem('kagerz_note_contents', JSON.stringify(cachedContents));
+        }
     } else if (data.status === 'locked' && !silent) {
         if (password) {
             notePassInput.value = '';
@@ -388,15 +413,31 @@ titleInput.addEventListener('input', handleInput);
 
 async function saveNote() {
     if (!currentNoteId) return;
+    
+    const currentContent = editor.innerHTML;
+    const currentTitle = titleInput.value;
+    const noteBasic = notes.find(x => x.id === currentNoteId);
+
+    // 1. Lưu ngay vào LocalStorage để trải nghiệm mượt mà không cần đợi API
+    if (noteBasic && !noteBasic.is_locked) {
+        const cachedContents = JSON.parse(localStorage.getItem('kagerz_note_contents') || '{}');
+        cachedContents[currentNoteId] = currentContent;
+        localStorage.setItem('kagerz_note_contents', JSON.stringify(cachedContents));
+    }
+
+    // 2. Gửi dữ liệu lên Google Sheets
     const res = await fetchNoCache(API_URL + '?action=save_note', {
-        method: 'POST', body: JSON.stringify({ id: currentNoteId, content: editor.innerHTML, title: titleInput.value })
+        method: 'POST', body: JSON.stringify({ id: currentNoteId, content: currentContent, title: currentTitle })
     });
     const data = await res.json();
+    
     if (data.status === 'success') {
         saveStatus.classList.remove('hidden');
         updateTimeUI(data.updated_at);
-        const n = notes.find(x => x.id === currentNoteId);
-        if(n) { n.title = titleInput.value; n.updated_at = data.updated_at; }
+        if(noteBasic) { 
+            noteBasic.title = currentTitle; 
+            noteBasic.updated_at = data.updated_at; 
+        }
         renderNoteList();
     }
 }
