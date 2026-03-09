@@ -26,9 +26,48 @@ const themeIcon = document.getElementById('theme-icon');
 const sidebar = document.getElementById('main-sidebar');
 const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
 
-const globalLoader = document.getElementById('global-loader');
-function showLoader() { if (globalLoader) globalLoader.classList.add('show'); }
-function hideLoader() { if (globalLoader) globalLoader.classList.remove('show'); }
+// --- TẠO ĐỘNG LOADER BẰNG JS (CHỐNG LỖI CACHE) ---
+if (!document.getElementById('global-loader-style')) {
+    const style = document.createElement('style');
+    style.id = 'global-loader-style';
+    style.innerHTML = `
+        #global-loader {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-body, rgba(15, 23, 42, 0.9));
+            z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        #global-loader.show { opacity: 1; pointer-events: auto; }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid var(--glass-border, rgba(255,255,255,0.1));
+            border-top-color: var(--accent-color, #38bdf8);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .loading-text { margin-top: 15px; color: var(--text-muted, #94a3b8); font-size: 0.9rem; letter-spacing: 1px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    `;
+    document.head.appendChild(style);
+}
+
+if (!document.getElementById('global-loader')) {
+    const loaderDiv = document.createElement('div');
+    loaderDiv.id = 'global-loader';
+    loaderDiv.innerHTML = '<div class="spinner"></div><div class="loading-text">Đang tải dữ liệu...</div>';
+    document.body.appendChild(loaderDiv);
+}
+
+function showLoader() { 
+    const el = document.getElementById('global-loader');
+    if (el) el.classList.add('show'); 
+}
+function hideLoader() { 
+    const el = document.getElementById('global-loader');
+    if (el) el.classList.remove('show'); 
+}
+// --------------------------------------------------
 
 // --- HÀM GỌI API ĐÃ ĐƯỢC CẬP NHẬT CHO APPS SCRIPT ---
 async function fetchNoCache(url, options = {}) {
