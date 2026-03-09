@@ -454,50 +454,31 @@ function updateTimeUI(ts) {
 
 // CRUD
 async function addNewNote() {
-    // 1. Tạo ID tạm thời và hiển thị ngay lập tức (Tốc độ 0s)
-    const tempId = 'temp_' + Date.now();
-    const timestamp = Math.floor(Date.now() / 1000);
-    const newNote = {
-        id: tempId, title: 'Đang tạo...', content: '', 
-        is_locked: false, password: '', updated_at: timestamp
-    };
-    
-    notes.unshift(newNote);
-    loadNote(tempId);
-    if(window.innerWidth <= 768) {
-        sidebar.classList.remove('mobile-open');
-        mobileOverlay.classList.remove('show');
-    }
-
-    // 2. Gọi API ngầm để tạo thật trên Server
+    showLoader();
     try {
         const res = await fetchNoCache(API_URL + '?action=add_note', { method: 'POST', body: JSON.stringify({}) });
         const data = await res.json();
         if(data.status === 'success') { 
-            // 3. Thay thế ID tạm bằng ID thật từ server
-            const index = notes.findIndex(n => n.id === tempId);
-            if (index !== -1) {
-                notes[index] = data.data;
-                currentNoteId = data.data.id;
-                renderNoteList(); // Render lại danh sách để lấy ID thật
-                titleInput.value = data.data.title;
+            notes.unshift(data.data); 
+            loadNote(data.data.id); 
+            if(window.innerWidth <= 768) {
+                sidebar.classList.remove('mobile-open');
+                mobileOverlay.classList.remove('show');
             }
         }
-    } catch (err) {
-        // Xử lý lỗi nếu việc gọi API thất bại
-        notes = notes.filter(n => n.id !== tempId);
-        renderNoteList();
-        alert("Có lỗi khi tạo ghi chú mới. Vui lòng thử lại!");
-    }
-}
-async function deleteNote() {
-    if(!confirm("Xóa ghi chú này?")) return;
-    const res = await fetchNoCache(API_URL + '?action=delete_note', { method: 'POST', body: JSON.stringify({ id: currentNoteId }) });
-    const data = await res.json();
-    if(data.status === 'success') { notes = notes.filter(n => n.id !== currentNoteId); loadNote(notes[0].id); }
-    else alert(data.message);
+    } finally { hideLoader(); }
 }
 
+async function deleteNote() {
+    if(!confirm("Xóa ghi chú này?")) return;
+    showLoader();
+    try {
+        const res = await fetchNoCache(API_URL + '?action=delete_note', { method: 'POST', body: JSON.stringify({ id: currentNoteId }) });
+        const data = await res.json();
+        if(data.status === 'success') { notes = notes.filter(n => n.id !== currentNoteId); loadNote(notes[0].id); }
+        else alert(data.message);
+    } finally { hideLoader(); }
+}
 // Copy Link
 function copyLink() {
     const url = window.location.origin + window.location.pathname + '?note=' + currentNoteId;
@@ -569,32 +550,7 @@ function handleDrop(e) {
     } return false;
 }
 function handleDragEnd() { this.classList.remove('dragging'); }
-async function addNewNote() {
-    showLoader();
-    try {
-        const res = await fetchNoCache(API_URL + '?action=add_note', { method: 'POST', body: JSON.stringify({}) });
-        const data = await res.json();
-        if(data.status === 'success') { 
-            notes.unshift(data.data); 
-            loadNote(data.data.id); 
-            if(window.innerWidth <= 768) {
-                sidebar.classList.remove('mobile-open');
-                mobileOverlay.classList.remove('show');
-            }
-        }
-    } finally { hideLoader(); }
-}
 
-async function deleteNote() {
-    if(!confirm("Xóa ghi chú này?")) return;
-    showLoader();
-    try {
-        const res = await fetchNoCache(API_URL + '?action=delete_note', { method: 'POST', body: JSON.stringify({ id: currentNoteId }) });
-        const data = await res.json();
-        if(data.status === 'success') { notes = notes.filter(n => n.id !== currentNoteId); loadNote(notes[0].id); }
-        else alert(data.message);
-    } finally { hideLoader(); }
-}
 // Expose functions
 window.toggleTheme = toggleTheme;
 window.openGlobalSettingsModal = openGlobalSettingsModal;
