@@ -26,6 +26,10 @@ const themeIcon = document.getElementById('theme-icon');
 const sidebar = document.getElementById('main-sidebar');
 const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
 
+const globalLoader = document.getElementById('global-loader');
+function showLoader() { if (globalLoader) globalLoader.classList.add('show'); }
+function hideLoader() { if (globalLoader) globalLoader.classList.remove('show'); }
+
 // --- HÀM GỌI API ĐÃ ĐƯỢC CẬP NHẬT CHO APPS SCRIPT ---
 async function fetchNoCache(url, options = {}) {
     const separator = url.includes('?') ? '&' : '?';
@@ -61,14 +65,13 @@ async function fetchNoCache(url, options = {}) {
 
 // --- INIT ---
 window.onload = async () => {
-    // 1. Load Theme
     const savedTheme = localStorage.getItem('app_theme');
     if (savedTheme === 'light') {
         document.body.classList.add('light-mode');
         themeIcon.classList.replace('fa-moon', 'fa-sun');
     }
 
-    // 2. Check Auth
+    showLoader(); // Bật loading
     try {
         const res = await fetchNoCache(API_URL + '?action=check_auth_status');
         const data = await res.json();
@@ -85,11 +88,11 @@ window.onload = async () => {
         console.error("Lỗi API Init", err);
         loginScreen.style.display = 'flex';
         pinInput.focus();
+    } finally {
+        hideLoader(); // Tắt loading khi xong
     }
     const urlParams = new URLSearchParams(window.location.search);
     window.sharedNoteId = urlParams.get('note');
-
-    // 3. Init Toolbar Listeners
     initToolbarStateListeners();
 };
 
@@ -158,28 +161,20 @@ function toggleMobileSidebar() {
 // --- GLOBAL LOGIN ---
 pinInput.addEventListener('input', async (e) => {
     if (e.target.value.length === 4) {
-        // Bắt đầu loading
-        pinInput.disabled = true;
-        pinInput.style.opacity = '0.5';
-        
+        showLoader(); // Bật loading
         try {
             const res = await fetchNoCache(API_URL + '?action=login_global', {
                 method: 'POST', body: JSON.stringify({ password: e.target.value })
             });
             const data = await res.json();
-            if (data.status === 'success') {
-                hideLogin();
-            } else {
+            if (data.status === 'success') hideLogin();
+            else {
                 pinInput.value = '';
                 pinInput.style.borderBottomColor = '#ef4444';
                 setTimeout(() => pinInput.style.borderBottomColor = 'var(--text-muted)', 500);
             }
         } catch (err) { alert("Lỗi kết nối API!"); }
-        
-        // Kết thúc loading
-        pinInput.disabled = false;
-        pinInput.style.opacity = '1';
-        pinInput.focus();
+        finally { hideLoader(); } // Tắt loading
     }
 });
 
@@ -309,7 +304,7 @@ async function loadNote(id) {
     renderNoteList();
     
     const noteBasic = notes.find(n => n.id === id);
-    titleInput.value = noteBasic.title;
+    titleInput.value = noteBasic.title || '';
     
     document.getElementById('lock-indicator').classList.toggle('hidden', !noteBasic.is_locked);
     
@@ -322,8 +317,16 @@ async function loadNote(id) {
     } else {
         lockedOverlay.classList.add('hidden');
         setToolbarLocked(false);
-        editor.innerHTML = ''; 
-        fetchNoteContent(id);
+        
+        // Kiểm tra xem đã có nội dung trong Cache chưa
+        const cachedContents = JSON.parse(localStorage.getItem('kagerz_note_contents') || '{}');
+        if (!cachedContents[id]) {
+            editor.innerHTML = ''; 
+            showLoader(); // Nếu chưa có cache thì mới hiện Loading
+        }
+        
+        await fetchNoteContent(id);
+        hideLoader(); // Tắt Loading khi API trả về
     }
 }
 
@@ -393,7 +396,9 @@ notePassInput.addEventListener('input', () => {
 });
 
 async function unlockNote(silent = false) {
-    fetchNoteContent(currentNoteId, notePassInput.value, silent);
+    showLoader();
+    await fetchNoteContent(currentNoteId, notePassInput.value, silent);
+    hideLoader();
 }
 
 // Editor & Saving
@@ -564,7 +569,32 @@ function handleDrop(e) {
     } return false;
 }
 function handleDragEnd() { this.classList.remove('dragging'); }
+async function addNewNote() {
+    showLoader();
+    try {
+        const res = await fetchNoCache(API_URL + '?action=add_note', { method: 'POST', body: JSON.stringify({}) });
+        const data = await res.json();
+        if(data.status === 'success') { 
+            notes.unshift(data.data); 
+            loadNote(data.data.id); 
+            if(window.innerWidth <= 768) {
+                sidebar.classList.remove('mobile-open');
+                mobileOverlay.classList.remove('show');
+            }
+        }
+    } finally { hideLoader(); }
+}
 
+async function deleteNote() {
+    if(!confirm("Xóa ghi chú này?")) return;
+    showLoader();
+    try {
+        const res = await fetchNoCache(API_URL + '?action=delete_note', { method: 'POST', body: JSON.stringify({ id: currentNoteId }) });
+        const data = await res.json();
+        if(data.status === 'success') { notes = notes.filter(n => n.id !== currentNoteId); loadNote(notes[0].id); }
+        else alert(data.message);
+    } finally { hideLoader(); }
+}
 // Expose functions
 window.toggleTheme = toggleTheme;
 window.openGlobalSettingsModal = openGlobalSettingsModal;
