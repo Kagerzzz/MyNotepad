@@ -26,7 +26,7 @@ const themeIcon = document.getElementById('theme-icon');
 const sidebar = document.getElementById('main-sidebar');
 const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
 
-// --- TẠO ĐỘNG LOADER BẰNG JS (CHỐNG LỖI CACHE) ---
+// --- TẠO ĐỘNG LOADER BẰNG JS ---
 if (!document.getElementById('global-loader-style')) {
     const style = document.createElement('style');
     style.id = 'global-loader-style';
@@ -67,36 +67,15 @@ function hideLoader() {
     const el = document.getElementById('global-loader');
     if (el) el.classList.remove('show'); 
 }
-// --------------------------------------------------
 
-// --- HÀM GỌI API ĐÃ ĐƯỢC CẬP NHẬT CHO APPS SCRIPT ---
+// --- HÀM GỌI API ---
 async function fetchNoCache(url, options = {}) {
     const separator = url.includes('?') ? '&' : '?';
     const uniqueUrl = `${url}${separator}_t=${Date.now()}`;
     
-    // Đảm bảo không bị lỗi CORS khi gọi Google Apps Script
     if (options.method === 'POST') {
         if (!options.headers) options.headers = {};
-        // Sử dụng text/plain để vượt qua preflight CORS của trình duyệt
         options.headers['Content-Type'] = 'text/plain;charset=utf-8';
-    }
-    
-    return fetch(uniqueUrl, options);
-}
-// Mobile Elements
-const sidebar = document.getElementById('main-sidebar');
-const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
-
-// --- HÀM GỌI API CHỐNG CACHE ---
-async function fetchNoCache(url, options = {}) {
-    const separator = url.includes('?') ? '&' : '?';
-    const uniqueUrl = `${url}${separator}_t=${Date.now()}`;
-    
-    // Xử lý riêng cho method POST để Apps Script không chặn CORS
-    if (options.method === 'POST') {
-        options.headers = {
-            'Content-Type': 'text/plain;charset=utf-8',
-        };
     }
     
     return fetch(uniqueUrl, options);
@@ -110,7 +89,7 @@ window.onload = async () => {
         themeIcon.classList.replace('fa-moon', 'fa-sun');
     }
 
-    showLoader(); // Bật loading
+    showLoader(); 
     try {
         const res = await fetchNoCache(API_URL + '?action=check_auth_status');
         const data = await res.json();
@@ -128,7 +107,7 @@ window.onload = async () => {
         loginScreen.style.display = 'flex';
         pinInput.focus();
     } finally {
-        hideLoader(); // Tắt loading khi xong
+        hideLoader(); 
     }
     const urlParams = new URLSearchParams(window.location.search);
     window.sharedNoteId = urlParams.get('note');
@@ -200,7 +179,7 @@ function toggleMobileSidebar() {
 // --- GLOBAL LOGIN ---
 pinInput.addEventListener('input', async (e) => {
     if (e.target.value.length === 4) {
-        showLoader(); // Bật loading
+        showLoader(); 
         try {
             const res = await fetchNoCache(API_URL + '?action=login_global', {
                 method: 'POST', body: JSON.stringify({ password: e.target.value })
@@ -213,7 +192,7 @@ pinInput.addEventListener('input', async (e) => {
                 setTimeout(() => pinInput.style.borderBottomColor = 'var(--text-muted)', 500);
             }
         } catch (err) { alert("Lỗi kết nối API!"); }
-        finally { hideLoader(); } // Tắt loading
+        finally { hideLoader(); } 
     }
 });
 
@@ -285,20 +264,18 @@ async function initApp() {
 }
 
 async function loadNoteList() {
-    // 1. Load ngay lập tức từ LocalStorage (nếu có) để giao diện hiện lên luôn
     const cachedNotes = localStorage.getItem('kagerz_notes_cache');
     if (cachedNotes) {
         notes = JSON.parse(cachedNotes);
         renderNoteList();
     }
 
-    // 2. Chạy ngầm gọi API để lấy dữ liệu mới nhất
     try {
         const res = await fetchNoCache(API_URL + '?action=get_list');
         const data = await res.json();
         if (data.status === 'success') { 
             notes = data.data; 
-            localStorage.setItem('kagerz_notes_cache', JSON.stringify(notes)); // Cập nhật cache
+            localStorage.setItem('kagerz_notes_cache', JSON.stringify(notes));
             renderNoteList(); 
         }
     } catch (error) {
@@ -357,15 +334,14 @@ async function loadNote(id) {
         lockedOverlay.classList.add('hidden');
         setToolbarLocked(false);
         
-        // Kiểm tra xem đã có nội dung trong Cache chưa
         const cachedContents = JSON.parse(localStorage.getItem('kagerz_note_contents') || '{}');
         if (!cachedContents[id]) {
             editor.innerHTML = ''; 
-            showLoader(); // Nếu chưa có cache thì mới hiện Loading
+            showLoader(); 
         }
         
         await fetchNoteContent(id);
-        hideLoader(); // Tắt Loading khi API trả về
+        hideLoader(); 
     }
 }
 
@@ -386,7 +362,6 @@ function setToolbarLocked(locked) {
 async function fetchNoteContent(id, password = '', silent = false) {
     const noteBasic = notes.find(n => n.id === id);
     
-    // 1. Load nội dung ngay lập tức từ LocalStorage (nếu ghi chú không bị khóa)
     if (noteBasic && !noteBasic.is_locked && !password) {
         const cachedContents = JSON.parse(localStorage.getItem('kagerz_note_contents') || '{}');
         if (cachedContents[id]) {
@@ -397,7 +372,6 @@ async function fetchNoteContent(id, password = '', silent = false) {
         }
     }
 
-    // 2. Chạy ngầm gọi API để lấy dữ liệu mới nhất (đảm bảo đồng bộ giữa điện thoại và máy tính)
     const res = await fetchNoCache(API_URL + '?action=get_note', {
         method: 'POST', body: JSON.stringify({ id: id, password: password })
     });
@@ -405,7 +379,6 @@ async function fetchNoteContent(id, password = '', silent = false) {
     
     if (data.status === 'success') {
         lockedOverlay.classList.add('hidden');
-        // Chỉ đè lại nội dung nếu có sự khác biệt hoặc load lần đầu
         if (editor.innerHTML !== data.data.content) {
             editor.innerHTML = data.data.content;
         }
@@ -413,7 +386,6 @@ async function fetchNoteContent(id, password = '', silent = false) {
         setToolbarLocked(false);
         setTimeout(updateToolbarState, 100);
         
-        // 3. Cập nhật nội dung mới nhất vào LocalStorage
         if (!data.data.is_locked) { 
             const cachedContents = JSON.parse(localStorage.getItem('kagerz_note_contents') || '{}');
             cachedContents[id] = data.data.content;
@@ -428,7 +400,6 @@ async function fetchNoteContent(id, password = '', silent = false) {
     }
 }
 
-// Tự động unlock note
 notePassInput.addEventListener('input', () => {
     clearTimeout(noteAuthTypingTimer);
     noteAuthTypingTimer = setTimeout(() => unlockNote(true), 300);
@@ -440,7 +411,6 @@ async function unlockNote(silent = false) {
     hideLoader();
 }
 
-// Editor & Saving
 function formatDoc(cmd, val = null) { 
     document.execCommand(cmd, false, val); 
     editor.focus(); 
@@ -448,10 +418,11 @@ function formatDoc(cmd, val = null) {
 }
 
 const handleInput = () => {
-    // Chỉ ẩn biểu tượng "đã lưu" (dấu tích xanh) khi người dùng bắt đầu gõ
-    // Không còn kích hoạt autoSaveTimer nữa
     saveStatus.classList.add('hidden');
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(saveNote, 3000);
 };
+
 editor.addEventListener('input', handleInput);
 titleInput.addEventListener('input', handleInput);
 
@@ -462,14 +433,12 @@ async function saveNote() {
     const currentTitle = titleInput.value;
     const noteBasic = notes.find(x => x.id === currentNoteId);
 
-    // 1. Lưu ngay vào LocalStorage để trải nghiệm mượt mà không cần đợi API
     if (noteBasic && !noteBasic.is_locked) {
         const cachedContents = JSON.parse(localStorage.getItem('kagerz_note_contents') || '{}');
         cachedContents[currentNoteId] = currentContent;
         localStorage.setItem('kagerz_note_contents', JSON.stringify(cachedContents));
     }
 
-    // 2. Gửi dữ liệu lên Google Sheets
     const res = await fetchNoCache(API_URL + '?action=save_note', {
         method: 'POST', body: JSON.stringify({ id: currentNoteId, content: currentContent, title: currentTitle })
     });
@@ -485,13 +454,20 @@ async function saveNote() {
         renderNoteList();
     }
 }
+
+// Wrapper cho nút Save thủ công trên HTML
+async function saveNoteManual() {
+    showLoader();
+    await saveNote();
+    hideLoader();
+}
+
 function updateTimeUI(ts) {
     const d = new Date(ts * 1000);
     document.getElementById('last-saved').innerText = 
         `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
 }
 
-// CRUD
 async function addNewNote() {
     showLoader();
     try {
@@ -518,7 +494,7 @@ async function deleteNote() {
         else alert(data.message);
     } finally { hideLoader(); }
 }
-// Copy Link
+
 function copyLink() {
     const url = window.location.origin + window.location.pathname + '?note=' + currentNoteId;
     if (navigator.clipboard && window.isSecureContext) {
@@ -533,13 +509,13 @@ function fallbackCopy(text) {
     try { document.execCommand('copy'); showCopySuccess(); } catch (err) {}
     document.body.removeChild(ta);
 }
+
 function showCopySuccess() {
     const icon = document.getElementById('copy-icon');
     icon.className = "fa-solid fa-check"; icon.style.color = "#34d399";
     setTimeout(() => { icon.className = "fa-solid fa-link"; icon.style.color = ""; }, 2000);
 }
 
-// Settings Modal
 const modal = document.getElementById('settings-modal');
 const setLock = document.getElementById('setting-is-locked');
 const setPass = document.getElementById('setting-password');
@@ -566,7 +542,6 @@ async function saveSettings() {
     closeSettings(); loadNote(currentNoteId);
 }
 
-// Drag Drop Logic Fixed
 let dragSrcEl = null;
 function handleDragStart(e) { dragSrcEl = this; e.dataTransfer.effectAllowed = 'move'; this.classList.add('dragging'); }
 function handleDragOver(e) { e.preventDefault(); return false; }
